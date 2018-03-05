@@ -89,8 +89,8 @@ class ActiveDirectory(object):
         self.server = ldap3.Server(host=u.hostname, port=u.port, use_ssl=use_ssl)
         self.conn = ldap3.Connection(self.server,
                                      auto_bind=True,
-                                     # client_strategy=ldap3.STRATEGY_REUSABLE_THREADED, # .STRATEGY_SYNC,
-                                     client_strategy=ldap3.STRATEGY_SYNC,
+                                     # client_strategy=ldap3.STRATEGY_REUSABLE_THREADED, # .SYNC,
+                                     client_strategy=ldap3.SYNC,
                                      user=dn,
                                      password=secret,
                                      authentication=ldap3.AUTH_SIMPLE)
