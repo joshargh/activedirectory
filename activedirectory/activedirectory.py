@@ -13,7 +13,9 @@ from collections import defaultdict
 from collections import OrderedDict
 import ldap3
 from ldap3.utils.conv import escape_bytes
-from ldap3.protocol.rfc4511 import SearchRequest, ValsAtLeast1, Scope, Integer0ToMax, TypesOnly, Filter, AttributeSelection, Selector, EqualityMatch
+from ldap3.protocol.rfc4511 import SearchRequest, ValsAtLeast1, Scope, Integer0ToMax, TypesOnly, Filter, \
+    AttributeSelection, Selector, EqualityMatch
+
 try:
     import configparser
 except:
@@ -29,7 +31,8 @@ class ActiveDirectory(object):
     def reconnect(self):
         self.__init__(self.url, self.dn, self.secret, base=self.base)
 
-    def __init__(self, url, dn=None, secret=None, base="", debug=False, paged_size=1000, size_limit=None, time_limit=None):
+    def __init__(self, url, dn=None, secret=None, base="", debug=False, paged_size=1000, size_limit=None,
+                 time_limit=None):
         """If you do not specify credentials (dn and secret) it will try to load them from ~/.netrc file.
 
         @param server: url of LDAP Server
@@ -138,6 +141,7 @@ class ActiveDirectory(object):
         )
         if self.conn.result['description'] == 'sizeLimitExceeded' or 'controls' not in self.conn.result:
             logging.error("sizeLimitExceeded")
+            logging.error(self.conn.result)
             cookie = None
         else:
             cookie = self.conn.result['controls']['1.2.840.113556.1.4.319']['value']['cookie']
@@ -157,6 +161,7 @@ class ActiveDirectory(object):
             )
             if self.conn.result['description'] == 'sizeLimitExceeded' or 'controls' not in self.conn.result:
                 logging.error("sizeLimitExceeded")
+                logging.error(self.conn.result)
                 cookie = None
             else:
                 cookie = self.conn.result['controls']['1.2.840.113556.1.4.319']['value']['cookie']
@@ -252,26 +257,32 @@ class ActiveDirectory(object):
 
     def __compress_attributes(self, dic):
         """
-        This will convert all attributes that are list with only one item string into simple string. It seems that LDAP always return lists, even when it doesn
-        t make sense.
+        This will convert all attributes that are list with only one item string into simple string.
+        It seems that LDAP always return lists, even when it doesnt make sense.
 
         :param dic:
         :return:
         """
         result = {}
-        for k, v in dic.iteritems():
-            if isinstance(v, types.ListType) and len(v) == 1:
+
+        # for k, v in dic.iteritems():
+        for k, v in dic.items():
+            if isinstance(v, list) and len(v) == 1:
                 if k not in ('msExchMailboxSecurityDescriptor', 'msExchSafeSendersHash', 'msExchBlockedSendersHash',
                              'replicationSignature', 'msExchSafeRecipientsHash', 'sIDHistory',
                              'msRTCSIP-UserRoutingGroupId', 'mSMQDigests', 'mSMQSignCertificates',
                              'msExchMasterAccountSid', 'msExchPreviousAccountSid', 'msExchUMPinChecksum',
                              'userSMIMECertificate', 'userCertificate', 'userCert',
                              'msExchDisabledArchiveGUID', 'msExchUMPinChecksum', 'msExchUMSpokenName',
-                             'objectSid', 'objectGUID', 'msExchArchiveGUID', 'thumbnailPhoto', 'msExchMailboxGuid'):
+                             'objectSid', 'objectGUID', 'msExchArchiveGUID', 'thumbnailPhoto', 'msExchMailboxGuid',
+                             'dSCorePropagationData'):
                     try:
+                        self.logger.debug(result[k], result[v])
                         result[k] = v[0].decode('utf-8')
                     except Exception as e:
-                        logging. error("Failed to decode attribute: %s -- %s" % (k, e))
+                        import ipdb;
+                        ipdb.set_trace()
+                        logging.error("Failed to decode attribute: %s -- %s" % (k, e))
                         result[k] = v[0]
         return result
 
@@ -281,13 +292,12 @@ class ActiveDirectory(object):
         if attributes is None:
             attributes = self.attrs
         if user:
-            filter = "(&%s(sAMAccountName=%s))" % (
-                self.filter, self.escaped(user))
+            filter = "(&%s(sAMAccountName=%s))" % (self.filter, self.escaped(user))
         elif name:
-            filter = "(&%s(displayName=%s))" % (
-                self.filter, self.escaped(name))
+            filter = "(&%s(displayName=%s))" % (self.filter, self.escaped(name))
         elif email:
-            filter = "(&%s(|(mail=%s)(proxyAddresses=smtp:%s)))" % (self.filter, self.escaped(email), self.escaped(email))
+            filter = "(&%s(|(mail=%s)(proxyAddresses=smtp:%s)))" % (
+            self.filter, self.escaped(email), self.escaped(email))
         else:
             filter = None
 
@@ -296,12 +306,12 @@ class ActiveDirectory(object):
         r = self.search_ext_s(filterstr=filter, attrlist=attributes)
         if not r:
             return {}
-
-        if len(r) != 1:
-            raise NotImplementedError("getAttributes does not support returning values for multiple ldap objects")
+        # if len(r) != 1:
+        #     raise NotImplementedError("getAttributes does not support returning values for multiple ldap objects")
 
         # print(r[0])
-        return self.__compress_attributes(r[0]['attributes'])
+        # return self.__compress_attributes(r[0]['attributes'])
+        return r[0]['attributes']
 
     def get_attribute(self, attribute='sAMAccountName', user=None, email=None, name=None, dn=None):
         """
@@ -317,13 +327,12 @@ class ActiveDirectory(object):
         if user is None and email is None and name is None and dn is None:
             raise Exception("How do you expect to get an attribute when you specify no even one of user/email/name?")
         if user:
-            filter = "(&%s(sAMAccountName=%s))" % (
-                self.filter, self.escaped(user))
+            filter = "(&%s(sAMAccountName=%s))" % (self.filter, self.escaped(user))
         elif name:
-            filter = "(&%s(displayName=*%s*))" % (
-                self.filter, self.escaped(name))
+            filter = "(&%s(displayName=*%s*))" % (self.filter, self.escaped(name))
         elif email:
-            filter = "(&%s(|(mail=%s)(proxyAddresses=smtp:%s)))" % (self.filter, self.escaped(email), self.escaped(email))
+            filter = "(&%s(|(mail=%s)(proxyAddresses=smtp:%s)))" % (
+            self.filter, self.escaped(email), self.escaped(email))
 
         if dn:
             try:
@@ -344,7 +353,7 @@ class ActiveDirectory(object):
         # if not user or not r or len(r) != 1:
         #    return None
         if attribute in r[0]['attributes']:
-            return r[0]['attributes'][attribute][0]  # display name is returned as a list
+            return r[0]['attributes'][attribute]  # display name is returned as a list
         else:
             logging.error("xxx")
 
