@@ -37,7 +37,7 @@ class ActiveDirectory(object):
         @param secret: password of the servce account
         """
         self.filter = ''
-        self.scope = ldap3.SEARCH_SCOPE_WHOLE_SUBTREE
+        self.scope = ldap3.SUBTREE
         self.paged_size = paged_size
         if not size_limit:
             self.size_limit = Integer0ToMax(0)
