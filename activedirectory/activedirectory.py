@@ -89,11 +89,11 @@ class ActiveDirectory(object):
         self.server = ldap3.Server(host=u.hostname, port=u.port, use_ssl=use_ssl)
         self.conn = ldap3.Connection(self.server,
                                      auto_bind=True,
-                                     # client_strategy=ldap3.STRATEGY_REUSABLE_THREADED, # .SYNC,
+                                     # client_strategy=ldap3.REUSABLE, # .SYNC,
                                      client_strategy=ldap3.SYNC,
                                      user=dn,
                                      password=secret,
-                                     authentication=ldap3.AUTH_SIMPLE)
+                                     authentication=ldap3.SIMPLE)
         try:
             ret = self.conn.bind()
         except Exception as e:
@@ -329,7 +329,7 @@ class ActiveDirectory(object):
             try:
                 # TODO: it seems that if we specify attrilist = ['manager'] or just 'manager ' it will fail
                 # This seems like a bug in ldap3 to me.
-                r = self.search_ext_s(base=dn, scope=ldap3.SEARCH_SCOPE_BASE_OBJECT, filterstr='(objectClass=*)')
+                r = self.search_ext_s(base=dn, scope=ldap3.BASE, filterstr='(objectClass=*)')
                 if len(r) > 1:
                     raise NotImplementedError("getAttribute does not support returning attribute for multiple entities")
                 return r[0]['attributes'][attribute][0]
